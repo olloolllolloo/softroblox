@@ -1,93 +1,247 @@
--- Permanent Target Attachment Script
--- Uses event-driven structural alignment
-
+-- ФЛИНГ + ФОЛЛОУ ТП + СПИСОК ЗАЩИТЫ
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
--- Config
-local TARGET_NAME = "morphix46"
-local REFRESH_INTERVAL = 0.05 -- Частота принудительного обновления физического кадра
+if not player.Character then
+    player.CharacterAdded:Wait()
+end
 
--- Internal state
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlingGUI"
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 160)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.BackgroundTransparency = 1
+Title.Text = "FLING + FOLLOW TP"
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
+Title.TextSize = 16
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Поле ввода защиты
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(0, 210, 0, 30)
+InputBox.Position = UDim2.new(0.5, -105, 0, 30)
+InputBox.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+InputBox.BorderSizePixel = 0
+InputBox.Text = ""
+InputBox.PlaceholderText = "Никнеймы через запятую"
+InputBox.TextColor3 = Color3.fromRGB(200, 200, 255)
+InputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 180)
+InputBox.Font = Enum.Font.Gotham
+InputBox.TextSize = 12
+InputBox.ClearTextOnFocus = false
+InputBox.Parent = MainFrame
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 5)
+InputCorner.Parent = InputBox
+
+-- Кнопка флинга
+local FlingBtn = Instance.new("TextButton")
+FlingBtn.Size = UDim2.new(0, 210, 0, 40)
+FlingBtn.Position = UDim2.new(0.5, -105, 0, 70)
+FlingBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+FlingBtn.Text = "FLING + TP OFF"
+FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+FlingBtn.TextSize = 16
+FlingBtn.Font = Enum.Font.GothamBold
+FlingBtn.Parent = MainFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.Parent = FlingBtn
+
+-- Статус
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, 0, 0, 20)
+StatusText.Position = UDim2.new(0, 0, 0, 120)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = ""
+StatusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusText.TextSize = 12
+StatusText.Font = Enum.Font.Gotham
+StatusText.Parent = MainFrame
+
+-- ПЕРЕМЕННЫЕ
+local isActive = false
+local flingThread = nil
 local followConnection = nil
+local currentTargetIndex = 1
+local timer = 0
 
--- Helpers
-local function getTargetRoot()
-    local target = Players:FindFirstChild(TARGET_NAME)
-    if target and target.Character then
-        return target.Character:FindFirstChild("HumanoidRootPart")
+local function getIgnoredList()
+    local text = InputBox.Text
+    local list = {}
+    if text ~= "" then
+        for name in string.gmatch(text, "([^,]+)") do
+            local clean = name:gsub("^%s*(.-)%s*$", "%1"):lower()
+            if clean ~= "" then
+                table.insert(list, clean)
+            end
+        end
     end
-    return nil
+    return list
 end
 
-local function syncPhysics(myHRP, targetHRP)
-    if not myHRP or not targetHRP then return end
+local function getTargets()
+    local ignoreList = getIgnoredList()
+    local targets = {}
     
-    -- Принудительное обнуление импульса для исключения серверной интерполяции (пинга)
-    myHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    myHRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player then
+            local isIgnored = false
+            for _, name in ipairs(ignoreList) do
+                if p.Name:lower() == name then
+                    isIgnored = true
+                    break
+                end
+            end
+            if not isIgnored and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(targets, p)
+            end
+        end
+    end
     
-    -- Прямая запись CFrame, игнорируя буферы рендеринга
-    myHRP.CFrame = targetHRP.CFrame
+    return targets
 end
 
-local function startAttachment()
-    if followConnection then return end
+-- ФЛИНГ (ТОЧНО КАК В ТВОЁМ КОДЕ)
+local function doFling()
+    local hrp, c, vel, movel = nil, nil, nil, 0.1
     
-    -- Использование PreRender для фиксации позиции до отправки пакетов на сервер
-    followConnection = RunService.PreRender:Connect(function()
-        local myChar = LocalPlayer.Character
-        if not myChar then return end
+    while isActive do
+        RunService.Heartbeat:Wait()
         
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        local targetHRP = getTargetRoot()
+        if isActive then
+            while isActive and not (c and c.Parent and hrp and hrp.Parent) do
+                RunService.Heartbeat:Wait()
+                c = player.Character
+                hrp = c and c:FindFirstChild("HumanoidRootPart")
+            end
+            
+            if isActive and c and c.Parent and hrp and hrp.Parent then
+                vel = hrp.Velocity
+                hrp.Velocity = vel * 55000 + Vector3.new(0, 55000, 0)
+                RunService.RenderStepped:Wait()
+                
+                if c and c.Parent and hrp and hrp.Parent then
+                    hrp.Velocity = vel
+                end
+                
+                RunService.Stepped:Wait()
+                
+                if c and c.Parent and hrp and hrp.Parent then
+                    hrp.Velocity = vel + Vector3.new(0, movel, 0)
+                    movel = movel * -1
+                end
+            end
+        end
+    end
+end
+
+-- ФОЛЛОУ ТП + ПЕРЕКЛЮЧЕНИЕ ЦЕЛИ КАЖДЫЕ 3 СЕК
+local function followTPLoop()
+    followConnection = RunService.RenderStepped:Connect(function(deltaTime)
+        if not isActive then return end
         
-        if myHRP and targetHRP then
-            syncPhysics(myHRP, targetHRP)
+        timer = timer + deltaTime
+        
+        local targets = getTargets()
+        
+        if #targets == 0 then
+            StatusText.Text = "Нет целей..."
+            return
+        end
+        
+        -- Каждые 3 секунды переключаем цель
+        if timer >= 3 then
+            timer = 0
+            currentTargetIndex = currentTargetIndex + 1
+            if currentTargetIndex > #targets then
+                currentTargetIndex = 1
+            end
+        end
+        
+        -- Текущая цель
+        local target = targets[currentTargetIndex]
+        if target and target.Character then
+            local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+            local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetHRP and myHRP then
+                -- ТЕЛЕПОРТ ПРЯМО ВНУТРЬ ИГРОКА
+                pcall(function()
+                    myHRP.CFrame = targetHRP.CFrame
+                end)
+                
+                StatusText.Text = "💀 " .. target.Name .. " (" .. currentTargetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timer) .. "с"
+            end
         end
     end)
 end
 
-local function setupCharacterListener(char)
-    -- Отключение коллизий персонажа для предотвращения десинхронизации хитбоксов
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-    startAttachment()
+-- ЗАПУСК
+local function start()
+    if isActive then return end
+    isActive = true
+    
+    timer = 0
+    currentTargetIndex = 1
+    
+    flingThread = task.spawn(doFling)
+    followTPLoop()
+    
+    FlingBtn.Text = "FLING + TP ON"
+    FlingBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+    StatusText.Text = "Запуск..."
 end
 
--- Event Handling (Аналогично структуре предоставленного ESP)
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.delay(0.03, function()
-        setupCharacterListener(char)
-    end)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if player.Name == TARGET_NAME and followConnection then
+-- СТОП
+local function stop()
+    isActive = false
+    
+    if flingThread then
+        task.cancel(flingThread)
+        flingThread = nil
+    end
+    
+    if followConnection then
         followConnection:Disconnect()
         followConnection = nil
     end
-end)
-
--- Initial Setup
-if LocalPlayer.Character then
-    setupCharacterListener(LocalPlayer.Character)
-end
-
--- Periodic Verification Loop
-while true do
-    task.wait(REFRESH_INTERVAL)
-    local targetHRP = getTargetRoot()
-    local myChar = LocalPlayer.Character
     
-    if targetHRP and myChar then
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        if myHRP then
-            syncPhysics(myHRP, targetHRP)
-        end
+    -- Сбрасываем скорость
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Velocity = Vector3.new(0, 0, 0)
+        hrp.RotVelocity = Vector3.new(0, 0, 0)
     end
+    
+    FlingBtn.Text = "FLING + TP OFF"
+    FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    StatusText.Text = "Остановлен"
 end
+
+FlingBtn.MouseButton1Click:Connect(function()
+    if isActive then
+        stop()
+    else
+        start()
+    end
+end)
