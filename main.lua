@@ -84,6 +84,8 @@ local flingThread = nil
 local followConnection = nil
 local currentTargetIndex = 1
 local timer = 0
+local predictionMultiplier = 0.5 -- Множитель предугадывания (0.5 секунды вперёд)
+local lastTargetPos = nil -- Последняя позиция цели для расчёта скорости
 
 local function getIgnoredList()
     local text = InputBox.Text
@@ -155,7 +157,7 @@ local function doFling()
     end
 end
 
--- ФОЛЛОУ ТП + ПЕРЕКЛЮЧЕНИЕ ЦЕЛИ КАЖДЫЕ 3 СЕК
+-- ФОЛЛОУ ТП С ПРЕДУГАДЫВАНИЕМ ДВИЖЕНИЯ
 local function followTPLoop()
     followConnection = RunService.RenderStepped:Connect(function(deltaTime)
         if not isActive then return end
@@ -176,6 +178,7 @@ local function followTPLoop()
             if currentTargetIndex > #targets then
                 currentTargetIndex = 1
             end
+            lastTargetPos = nil -- Сбрасываем позицию при смене цели
         end
         
         -- Текущая цель
@@ -185,12 +188,38 @@ local function followTPLoop()
             local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             
             if targetHRP and myHRP then
-                -- ТЕЛЕПОРТ ПРЯМО ВНУТРЬ ИГРОКА
+                local targetPos = targetHRP.Position
+                local predictedPos = targetPos
+                
+                -- Предугадываем будущую позицию на основе скорости движения цели
+                if lastTargetPos then
+                    local velocity = (targetPos - lastTargetPos) / deltaTime
+                    
+                    -- Учитываем только горизонтальное движение для точности
+                    local horizontalVelocity = Vector3.new(velocity.X, 0, velocity.Z)
+                    local speed = horizontalVelocity.Magnitude
+                    
+                    -- Если цель движется достаточно быстро, предугадываем позицию
+                    if speed > 5 then
+                        -- Предсказываем позицию на 0.5 секунды вперёд
+                        predictedPos = targetPos + horizontalVelocity * predictionMultiplier
+                        
+                        -- Добавляем немного вертикального предугадывания если цель прыгает
+                        if velocity.Y > 10 then
+                            predictedPos = predictedPos + Vector3.new(0, velocity.Y * 0.3, 0)
+                        end
+                    end
+                end
+                
+                -- Сохраняем текущую позицию для следующего кадра
+                lastTargetPos = targetPos
+                
+                -- ТЕЛЕПОРТ С ПРЕДУГАДЫВАНИЕМ
                 pcall(function()
-                    myHRP.CFrame = targetHRP.CFrame
+                    myHRP.CFrame = CFrame.new(predictedPos)
                 end)
                 
-                StatusText.Text = "💀 " .. target.Name .. " (" .. currentTargetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timer) .. "с"
+                StatusText.Text = "💀 " .. target.Name .. " (" .. currentTargetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timer) .. "с | 🎯 Предугадывание"
             end
         end
     end)
@@ -203,6 +232,7 @@ local function start()
     
     timer = 0
     currentTargetIndex = 1
+    lastTargetPos = nil
     
     flingThread = task.spawn(doFling)
     followTPLoop()
@@ -236,6 +266,8 @@ local function stop()
     FlingBtn.Text = "FLING + TP OFF"
     FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
     StatusText.Text = "Остановлен"
+    
+    lastTargetPos = nil
 end
 
 FlingBtn.MouseButton1Click:Connect(function()
