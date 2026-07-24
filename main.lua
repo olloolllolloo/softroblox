@@ -1,5 +1,5 @@
--- НЕОНОВЫЙ ФЛИНГ - ИСПРАВЛЕННАЯ ВЕРСИЯ
--- Флингает каждого игрока с интервалом 0.3-0.5 секунды
+-- НЕОНОВЫЙ ФЛИНГ - УСИЛЕННАЯ ВЕРСИЯ
+-- Использует множественные методы флинга
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -19,7 +19,7 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Главное окно (УМЕНЬШЕННЫЙ РАЗМЕР)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 280) -- Уменьшен с 420x320
+MainFrame.Size = UDim2.new(0, 300, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 MainFrame.BackgroundTransparency = 0.05
@@ -46,7 +46,7 @@ mainCorner.Parent = MainFrame
 -- Функция создания неоновой кнопки
 local function createNeonButton(text, parent, posY)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 200, 0, 40) -- Уменьшен размер кнопки
+    btn.Size = UDim2.new(0, 200, 0, 40)
     btn.Position = UDim2.new(0.5, -100, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
     btn.BackgroundTransparency = 0.3
@@ -74,7 +74,7 @@ end
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.2⚡"
+Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.3⚡"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -96,7 +96,7 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = MinBtn
 
--- Кнопка закрытия (НОВАЯ)
+-- Кнопка закрытия
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(1, -75, 0, 3)
@@ -112,7 +112,7 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 6)
 closeCorner.Parent = CloseBtn
 
--- Поле ввода (УМЕНЬШЕНО)
+-- Поле ввода
 local InputBox = Instance.new("TextBox")
 InputBox.Size = UDim2.new(0, 260, 0, 35)
 InputBox.Position = UDim2.new(0.5, -130, 0, 45)
@@ -177,7 +177,7 @@ local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(0, 260, 0, 25)
 InfoText.Position = UDim2.new(0.5, -130, 0, 228)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Флинг каждые 10 сек | v2.1"
+InfoText.Text = "Флинг каждые 10 сек | v3.0 ULTRA"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -187,7 +187,6 @@ InfoText.Parent = MainFrame
 -- Переменные состояния
 local isFlinging = false
 local isFlingingNow = false
-local flingConnection = nil
 
 -- Получение игнорируемых игроков
 local function getIgnoredList()
@@ -212,7 +211,7 @@ local function updateStats(flingedCount)
     StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored .. " | Флингнуто: " .. flinged
 end
 
--- МОЩНЫЙ ФЛИНГ ДЛЯ ОДНОГО ИГРОКА
+-- МЕГА-ФЛИНГ ИГРОКА (МНОЖЕСТВЕННЫЕ МЕТОДЫ)
 local function flingPlayer(player)
     if not player or player == LocalPlayer then return false end
     
@@ -221,55 +220,99 @@ local function flingPlayer(player)
     
     local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
     
     if not rootPart or not humanoid then return false end
     if humanoid.Health <= 0 then return false end
     
-    -- Сохраняем позицию для возврата
-    local oldPos = rootPart.Position
+    local success = false
     
-    -- Пытаемся изменить сетевое владение
+    -- Метод 1: Через Velocity (старый метод)
     pcall(function()
-        rootPart:SetNetworkOwner(nil)
-    end)
-    
-    -- ОГРОМНАЯ СИЛА ФЛИНГА
-    local x = math.random(-5000, 5000)
-    local y = math.random(2000, 10000)
-    local z = math.random(-5000, 5000)
-    
-    -- Применяем скорость
-    pcall(function()
-        rootPart.Velocity = Vector3.new(x, y, z)
-        rootPart.RotVelocity = Vector3.new(
-            math.random(-500, 500),
-            math.random(-500, 500),
-            math.random(-500, 500)
+        rootPart.Velocity = Vector3.new(
+            math.random(-50000, 50000),
+            math.random(50000, 100000),
+            math.random(-50000, 50000)
         )
+        rootPart.RotVelocity = Vector3.new(
+            math.random(-1000, 1000),
+            math.random(-1000, 1000),
+            math.random(-1000, 1000)
+        )
+        success = true
     end)
     
-    -- Толкаем другие части
-    for _, part in ipairs(character:GetChildren()) do
-        if part:IsA("BasePart") and part ~= rootPart then
-            pcall(function()
+    -- Метод 2: Через AssemblyLinearVelocity
+    pcall(function()
+        rootPart.AssemblyLinearVelocity = Vector3.new(
+            math.random(-50000, 50000),
+            math.random(50000, 100000),
+            math.random(-50000, 50000)
+        )
+        rootPart.AssemblyAngularVelocity = Vector3.new(
+            math.random(-1000, 1000),
+            math.random(-1000, 1000),
+            math.random(-1000, 1000)
+        )
+        success = true
+    end)
+    
+    -- Метод 3: Через CFrame толчок
+    pcall(function()
+        local pos = rootPart.Position
+        rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 99999, 0)
+        task.wait(0.01)
+        rootPart.CFrame = rootPart.CFrame - Vector3.new(0, 99999, 0)
+        success = true
+    end)
+    
+    -- Метод 4: Толкаем все части тела
+    pcall(function()
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") and part ~= rootPart then
                 part.Velocity = Vector3.new(
-                    math.random(-3000, 3000),
-                    math.random(1000, 5000),
-                    math.random(-3000, 3000)
+                    math.random(-30000, 30000),
+                    math.random(30000, 80000),
+                    math.random(-30000, 30000)
                 )
-            end)
+                part.RotVelocity = Vector3.new(
+                    math.random(-500, 500),
+                    math.random(-500, 500),
+                    math.random(-500, 500)
+                )
+            end
         end
+        success = true
+    end)
+    
+    -- Метод 5: Через Humanoid
+    pcall(function()
+        humanoid.Sit = true
+        task.wait(0.05)
+        humanoid.Sit = false
+        humanoid.PlatformStand = true
+        task.wait(0.05)
+        humanoid.PlatformStand = false
+    end)
+    
+    -- Метод 6: Через Torso (если есть)
+    if torso then
+        pcall(function()
+            torso.Velocity = Vector3.new(
+                math.random(-50000, 50000),
+                math.random(50000, 100000),
+                math.random(-50000, 50000)
+            )
+            torso.RotVelocity = Vector3.new(
+                math.random(-2000, 2000),
+                math.random(-2000, 2000),
+                math.random(-2000, 2000)
+            )
+            success = true
+        end)
     end
     
-    -- Ждем и возвращаем владельца
-    task.wait(0.05)
-    pcall(function()
-        if rootPart and rootPart.Parent then
-            rootPart:SetNetworkOwner(player)
-        end
-    end)
-    
-    return true
+    return success
 end
 
 -- Флинг всех игроков ПО ОЧЕРЕДИ
@@ -309,15 +352,39 @@ local function flingAll()
     
     -- Флингаем каждого с задержкой
     for i, player in ipairs(targets) do
-        if not isFlinging then break end -- Проверяем, не остановлен ли флинг
+        if not isFlinging then break end
         
         ProgressLabel.Text = "🎯 " .. player.Name .. " (" .. i .. "/" .. totalTargets .. ")"
         StatusText.Text = "🔄 ФЛИНГ: " .. i .. "/" .. totalTargets
         StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
         
-        local success = flingPlayer(player)
-        if success then
-            flingedCount = flingedCount + 1
+        -- ПРИНУДИТЕЛЬНОЕ ИЗМЕНЕНИЕ СЕТЕВОГО ВЛАДЕЛЬЦА
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character.HumanoidRootPart
+            
+            -- Многократные попытки захвата
+            for attempt = 1, 5 do
+                pcall(function()
+                    root:SetNetworkOwner(nil)
+                    root.Anchored = false
+                    root.CanCollide = true
+                end)
+                task.wait(0.02)
+            end
+            
+            -- Применяем флинг
+            local success = flingPlayer(player)
+            if success then
+                flingedCount = flingedCount + 1
+            end
+            
+            -- Возвращаем владельца
+            task.wait(0.05)
+            pcall(function()
+                if root and root.Parent then
+                    root:SetNetworkOwner(player)
+                end
+            end)
         end
         
         updateStats(flingedCount)
@@ -391,7 +458,7 @@ FlingBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Сворачивание (ИСПРАВЛЕНО)
+-- Сворачивание
 local minimized = false
 local originalSize = MainFrame.Size
 local originalGlowSize = GlowFrame.Size
@@ -400,7 +467,6 @@ local elementsToHide = {}
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
-        -- Сохраняем элементы, которые нужно скрыть
         elementsToHide = {InputBox, StatsText, StatusText, FlingBtn, InfoText, ProgressLabel}
         for _, elem in ipairs(elementsToHide) do
             elem.Visible = false
@@ -420,7 +486,7 @@ MinBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Закрытие (НОВОЕ)
+-- Закрытие
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
@@ -441,6 +507,6 @@ end)
 -- Инициализация
 updateStats(0)
 
-print("✅ НЕОНОВЫЙ ФЛИНГ v2.1 ЗАГРУЖЕН!")
-print("📌 Флингает игроков ПО ОЧЕРЕДИ с задержкой 0.35 сек!")
-print("⚡ Исправлены все баги интерфейса!")
+print("✅ НЕОНОВЫЙ ФЛИНГ v3.0 ULTRA ЗАГРУЖЕН!")
+print("🔥 Использует 6 методов флинга одновременно!")
+print("💀 Многократный захват сетевого владельца!")
