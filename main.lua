@@ -1,5 +1,5 @@
--- НЕОНОВЫЙ ФЛИНГ - УСИЛЕННАЯ ВЕРСИЯ
--- Использует множественные методы флинга
+-- НЕОНОВЫЙ ФЛИНГ - ВЕРСИЯ С ТЕЛЕПОРТАЦИЕЙ
+-- Телепортируется к каждому игроку и флингает его
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,7 +17,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Главное окно (УМЕНЬШЕННЫЙ РАЗМЕР)
+-- Главное окно
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 300, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
@@ -74,7 +74,7 @@ end
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.3⚡"
+Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.5⚡"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -177,7 +177,7 @@ local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(0, 260, 0, 25)
 InfoText.Position = UDim2.new(0.5, -130, 0, 228)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Флинг каждые 10 сек | v3.0 ULTRA"
+InfoText.Text = "Флинг каждые 10 сек | v4.0 TP"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -211,111 +211,93 @@ local function updateStats(flingedCount)
     StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored .. " | Флингнуто: " .. flinged
 end
 
--- МЕГА-ФЛИНГ ИГРОКА (МНОЖЕСТВЕННЫЕ МЕТОДЫ)
-local function flingPlayer(player)
-    if not player or player == LocalPlayer then return false end
+-- ФЛИНГ ИГРОКА (рабочий метод из вашего кода)
+local function flingPlayer(targetPlayer)
+    if not targetPlayer or targetPlayer == LocalPlayer then return false end
     
-    local character = player.Character
+    local character = targetPlayer.Character
     if not character then return false end
     
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
     local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    if not humanoid or humanoid.Health <= 0 then return false end
     
-    if not rootPart or not humanoid then return false end
-    if humanoid.Health <= 0 then return false end
+    -- Сохраняем текущую позицию своего персонажа
+    local myChar = LocalPlayer.Character
+    if not myChar then return false end
     
-    local success = false
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return false end
     
-    -- Метод 1: Через Velocity (старый метод)
+    local myOriginalPos = myHRP.Position
+    
+    -- Телепортируемся к цели
+    local targetPos = hrp.Position
+    myHRP.CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0))
+    
+    task.wait(0.1)
+    
+    -- Пытаемся захватить сетевое владение
     pcall(function()
-        rootPart.Velocity = Vector3.new(
+        hrp:SetNetworkOwner(nil)
+        hrp.Anchored = false
+    end)
+    
+    -- Мощный флинг цели
+    pcall(function()
+        local vel = hrp.Velocity
+        hrp.Velocity = vel * 5000 + Vector3.new(
             math.random(-50000, 50000),
             math.random(50000, 100000),
             math.random(-50000, 50000)
         )
-        rootPart.RotVelocity = Vector3.new(
-            math.random(-1000, 1000),
-            math.random(-1000, 1000),
-            math.random(-1000, 1000)
+        hrp.RotVelocity = Vector3.new(
+            math.random(-5000, 5000),
+            math.random(-5000, 5000),
+            math.random(-5000, 5000)
         )
-        success = true
     end)
     
-    -- Метод 2: Через AssemblyLinearVelocity
-    pcall(function()
-        rootPart.AssemblyLinearVelocity = Vector3.new(
-            math.random(-50000, 50000),
-            math.random(50000, 100000),
-            math.random(-50000, 50000)
-        )
-        rootPart.AssemblyAngularVelocity = Vector3.new(
-            math.random(-1000, 1000),
-            math.random(-1000, 1000),
-            math.random(-1000, 1000)
-        )
-        success = true
-    end)
-    
-    -- Метод 3: Через CFrame толчок
-    pcall(function()
-        local pos = rootPart.Position
-        rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 99999, 0)
-        task.wait(0.01)
-        rootPart.CFrame = rootPart.CFrame - Vector3.new(0, 99999, 0)
-        success = true
-    end)
-    
-    -- Метод 4: Толкаем все части тела
-    pcall(function()
-        for _, part in ipairs(character:GetChildren()) do
-            if part:IsA("BasePart") and part ~= rootPart then
+    -- Флингуем все части тела цели
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") and part ~= hrp then
+            pcall(function()
                 part.Velocity = Vector3.new(
-                    math.random(-30000, 30000),
-                    math.random(30000, 80000),
-                    math.random(-30000, 30000)
+                    math.random(-50000, 50000),
+                    math.random(50000, 100000),
+                    math.random(-50000, 50000)
                 )
                 part.RotVelocity = Vector3.new(
-                    math.random(-500, 500),
-                    math.random(-500, 500),
-                    math.random(-500, 500)
+                    math.random(-3000, 3000),
+                    math.random(-3000, 3000),
+                    math.random(-3000, 3000)
                 )
-            end
+            end)
         end
-        success = true
-    end)
-    
-    -- Метод 5: Через Humanoid
-    pcall(function()
-        humanoid.Sit = true
-        task.wait(0.05)
-        humanoid.Sit = false
-        humanoid.PlatformStand = true
-        task.wait(0.05)
-        humanoid.PlatformStand = false
-    end)
-    
-    -- Метод 6: Через Torso (если есть)
-    if torso then
-        pcall(function()
-            torso.Velocity = Vector3.new(
-                math.random(-50000, 50000),
-                math.random(50000, 100000),
-                math.random(-50000, 50000)
-            )
-            torso.RotVelocity = Vector3.new(
-                math.random(-2000, 2000),
-                math.random(-2000, 2000),
-                math.random(-2000, 2000)
-            )
-            success = true
-        end)
     end
     
-    return success
+    task.wait(0.1)
+    
+    -- Возвращаем владельца
+    pcall(function()
+        if hrp and hrp.Parent then
+            hrp:SetNetworkOwner(targetPlayer)
+        end
+    end)
+    
+    -- Возвращаемся на свою позицию
+    pcall(function()
+        if myHRP and myHRP.Parent then
+            myHRP.CFrame = CFrame.new(myOriginalPos)
+        end
+    end)
+    
+    return true
 end
 
--- Флинг всех игроков ПО ОЧЕРЕДИ
+-- Флинг всех игроков ПО ОЧЕРЕДИ с телепортацией
 local function flingAll()
     if isFlingingNow then return end
     isFlingingNow = true
@@ -350,48 +332,28 @@ local function flingAll()
         return
     end
     
-    -- Флингаем каждого с задержкой
-    for i, player in ipairs(targets) do
+    -- Телепортируемся к каждому и флингаем
+    for i, targetPlayer in ipairs(targets) do
         if not isFlinging then break end
         
-        ProgressLabel.Text = "🎯 " .. player.Name .. " (" .. i .. "/" .. totalTargets .. ")"
+        ProgressLabel.Text = "🎯 " .. targetPlayer.Name .. " (" .. i .. "/" .. totalTargets .. ")"
         StatusText.Text = "🔄 ФЛИНГ: " .. i .. "/" .. totalTargets
         StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
         
-        -- ПРИНУДИТЕЛЬНОЕ ИЗМЕНЕНИЕ СЕТЕВОГО ВЛАДЕЛЬЦА
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local root = player.Character.HumanoidRootPart
-            
-            -- Многократные попытки захвата
-            for attempt = 1, 5 do
-                pcall(function()
-                    root:SetNetworkOwner(nil)
-                    root.Anchored = false
-                    root.CanCollide = true
-                end)
-                task.wait(0.02)
-            end
-            
-            -- Применяем флинг
-            local success = flingPlayer(player)
-            if success then
-                flingedCount = flingedCount + 1
-            end
-            
-            -- Возвращаем владельца
-            task.wait(0.05)
-            pcall(function()
-                if root and root.Parent then
-                    root:SetNetworkOwner(player)
-                end
-            end)
+        local success = flingPlayer(targetPlayer)
+        if success then
+            flingedCount = flingedCount + 1
         end
         
         updateStats(flingedCount)
         
-        -- Задержка между игроками
+        -- Задержка 3 секунды между игроками
         if i < totalTargets then
-            task.wait(0.35)
+            for waitTime = 3, 1, -1 do
+                if not isFlinging then break end
+                ProgressLabel.Text = "Следующий через " .. waitTime .. " сек... (" .. i .. "/" .. totalTargets .. ")"
+                task.wait(1)
+            end
         end
     end
     
@@ -399,7 +361,7 @@ local function flingAll()
     if isFlinging then
         StatusText.Text = "✅ ГОТОВО: " .. flingedCount .. "/" .. totalTargets
         StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-        ProgressLabel.Text = "Следующий флинг через 10 сек..."
+        ProgressLabel.Text = "Следующая волна через 10 сек..."
     end
     
     updateStats(flingedCount)
@@ -423,11 +385,11 @@ local function startFlinging()
             if not isFlingingNow then
                 flingAll()
             end
-            -- Ждем 10 секунд до следующего флинга
+            -- Ждем 10 секунд до следующей волны
             local waited = 0
             while waited < 10 and isFlinging do
                 local remaining = 10 - waited
-                ProgressLabel.Text = "Следующий флинг через " .. math.ceil(remaining) .. " сек..."
+                ProgressLabel.Text = "Следующая волна через " .. math.ceil(remaining) .. " сек..."
                 task.wait(1)
                 waited = waited + 1
             end
@@ -507,6 +469,6 @@ end)
 -- Инициализация
 updateStats(0)
 
-print("✅ НЕОНОВЫЙ ФЛИНГ v3.0 ULTRA ЗАГРУЖЕН!")
-print("🔥 Использует 6 методов флинга одновременно!")
-print("💀 Многократный захват сетевого владельца!")
+print("✅ НЕОНОВЫЙ ФЛИНГ v4.0 TP ЗАГРУЖЕН!")
+print("📍 Телепортируется к игрокам и флингает их!")
+print("⏱ Задержка 3 сек между игроками, 10 сек между волнами!")
