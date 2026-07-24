@@ -1,9 +1,8 @@
--- НЕОНОВЫЙ ФЛИНГ СКРИПТ - ИСПРАВЛЕННАЯ ВЕРСИЯ
--- Гарантированно работает и показывает интерфейс
+-- НЕОНОВЫЙ ФЛИНГ - РАБОЧАЯ ВЕРСИЯ С ЗАДЕРЖКОЙ
+-- Флингает каждого игрока с интервалом 0.3-0.5 секунды
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Ожидаем загрузки персонажа
@@ -18,16 +17,14 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = LocalPlayer.PlayerGui
 
--- Проверка что GUI создался
 if not ScreenGui.Parent then
-    warn("GUI не создался, пробуем через гейм")
     ScreenGui.Parent = game:GetService("CoreGui")
 end
 
 -- Главное окно
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 380, 0, 280)
-MainFrame.Position = UDim2.new(0.5, -190, 0.5, -140)
+MainFrame.Size = UDim2.new(0, 420, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -160)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -53,8 +50,8 @@ mainCorner.Parent = MainFrame
 -- Функция создания неоновой кнопки
 local function createNeonButton(text, parent, posY)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 200, 0, 40)
-    btn.Position = UDim2.new(0.5, -100, 0, posY)
+    btn.Size = UDim2.new(0, 220, 0, 45)
+    btn.Position = UDim2.new(0.5, -110, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
     btn.BackgroundTransparency = 0.3
     btn.BorderSizePixel = 0
@@ -79,7 +76,7 @@ end
 
 -- Заголовок
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
 Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ ⚡"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
@@ -89,13 +86,13 @@ Title.Parent = MainFrame
 
 -- Кнопка сворачивания
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -40, 0, 5)
+MinBtn.Size = UDim2.new(0, 35, 0, 35)
+MinBtn.Position = UDim2.new(1, -45, 0, 5)
 MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
 MinBtn.BackgroundTransparency = 0.5
 MinBtn.Text = "_"
 MinBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
-MinBtn.TextSize = 20
+MinBtn.TextSize = 25
 MinBtn.BorderSizePixel = 0
 MinBtn.Parent = MainFrame
 
@@ -105,17 +102,17 @@ minCorner.Parent = MinBtn
 
 -- Поле ввода
 local InputBox = Instance.new("TextBox")
-InputBox.Size = UDim2.new(0, 340, 0, 40)
-InputBox.Position = UDim2.new(0.5, -170, 0, 50)
+InputBox.Size = UDim2.new(0, 380, 0, 45)
+InputBox.Position = UDim2.new(0.5, -190, 0, 55)
 InputBox.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
 InputBox.BackgroundTransparency = 0.3
 InputBox.BorderSizePixel = 0
 InputBox.Text = ""
-InputBox.PlaceholderText = "Введи никнеймы через запятую (защита)"
+InputBox.PlaceholderText = "Никнеймы через запятую (защита)"
 InputBox.TextColor3 = Color3.fromRGB(200, 200, 255)
 InputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 180)
 InputBox.Font = Enum.Font.Gotham
-InputBox.TextSize = 14
+InputBox.TextSize = 15
 InputBox.TextXAlignment = Enum.TextXAlignment.Left
 InputBox.ClearTextOnFocus = false
 InputBox.Parent = MainFrame
@@ -126,37 +123,49 @@ inputCorner.Parent = InputBox
 
 -- Строка статуса
 local StatusText = Instance.new("TextLabel")
-StatusText.Size = UDim2.new(0, 340, 0, 30)
-StatusText.Position = UDim2.new(0.5, -170, 0, 105)
+StatusText.Size = UDim2.new(0, 380, 0, 30)
+StatusText.Position = UDim2.new(0.5, -190, 0, 115)
 StatusText.BackgroundTransparency = 1
 StatusText.Text = "● СТАТУС: ОСТАНОВЛЕН"
 StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
-StatusText.TextSize = 14
+StatusText.TextSize = 15
 StatusText.Font = Enum.Font.GothamBold
 StatusText.TextXAlignment = Enum.TextXAlignment.Left
 StatusText.Parent = MainFrame
 
 -- Статистика
 local StatsText = Instance.new("TextLabel")
-StatsText.Size = UDim2.new(0, 340, 0, 25)
-StatsText.Position = UDim2.new(0.5, -170, 0, 140)
+StatsText.Size = UDim2.new(0, 380, 0, 25)
+StatsText.Position = UDim2.new(0.5, -190, 0, 150)
 StatsText.BackgroundTransparency = 1
-StatsText.Text = "Игроков: 0 | Защищено: 0"
+StatsText.Text = "Игроков: 0 | Защищено: 0 | Флингнуто: 0"
 StatsText.TextColor3 = Color3.fromRGB(150, 150, 200)
-StatsText.TextSize = 12
+StatsText.TextSize = 13
 StatsText.Font = Enum.Font.Gotham
 StatsText.TextXAlignment = Enum.TextXAlignment.Left
 StatsText.Parent = MainFrame
 
+-- Прогресс флинга
+local ProgressLabel = Instance.new("TextLabel")
+ProgressLabel.Size = UDim2.new(0, 380, 0, 25)
+ProgressLabel.Position = UDim2.new(0.5, -190, 0, 180)
+ProgressLabel.BackgroundTransparency = 1
+ProgressLabel.Text = "Ожидание..."
+ProgressLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+ProgressLabel.TextSize = 13
+ProgressLabel.Font = Enum.Font.Gotham
+ProgressLabel.TextXAlignment = Enum.TextXAlignment.Left
+ProgressLabel.Parent = MainFrame
+
 -- Кнопка запуска
-local FlingBtn = createNeonButton("▶ ЗАПУСТИТЬ ФЛИНГ", MainFrame, 180)
+local FlingBtn = createNeonButton("▶ ЗАПУСТИТЬ ФЛИНГ", MainFrame, 220)
 
 -- Информация
 local InfoText = Instance.new("TextLabel")
-InfoText.Size = UDim2.new(0, 340, 0, 30)
-InfoText.Position = UDim2.new(0.5, -170, 0, 235)
+InfoText.Size = UDim2.new(0, 380, 0, 30)
+InfoText.Position = UDim2.new(0.5, -190, 0, 280)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Флинг каждые 10 сек | v1.0"
+InfoText.Text = "Флинг каждые 10 сек | v2.0 (с задержкой между игроками)"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -166,7 +175,7 @@ InfoText.Parent = MainFrame
 -- Переменные состояния
 local isFlinging = false
 local flingTimer = nil
-local ignoredNames = {}
+local isFlingingNow = false
 
 -- Получение игнорируемых игроков
 local function getIgnoredList()
@@ -184,62 +193,106 @@ local function getIgnoredList()
 end
 
 -- Обновление статистики
-local function updateStats()
+local function updateStats(flingedCount)
     local total = #Players:GetPlayers()
     local ignored = #getIgnoredList()
-    StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored
+    local flinged = flingedCount or 0
+    StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored .. " | Флингнуто: " .. flinged
 end
 
--- ФУНКЦИЯ ФЛИНГА (МОЩНАЯ ВЕРСИЯ)
-local function flingPlayer(player)
-    if not player or player == LocalPlayer then return end
-    if not player.Character then return end
+-- МОЩНЫЙ ФЛИНГ ДЛЯ ОДНОГО ИГРОКА (С ЗАДЕРЖКОЙ)
+local function flingPlayer(player, delay)
+    if not player or player == LocalPlayer then return false end
+    if not player.Character then return false end
     
     local humanoid = player.Character:FindFirstChild("Humanoid")
     local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
     
-    if not rootPart or not humanoid then return end
-    if humanoid.Health <= 0 then return end
+    if not rootPart or not humanoid then return false end
+    if humanoid.Health <= 0 then return false end
+    
+    -- Ждем задержку перед флингом
+    if delay and delay > 0 then
+        task.wait(delay)
+    end
+    
+    -- Проверяем что игрок все еще существует
+    if not player.Character or not rootPart.Parent then return false end
     
     -- Смена сетевого владельца
     rootPart:SetNetworkOwner(nil)
     
-    -- МОЩНЫЙ ФЛИНГ - гигантские значения
-    local x = math.random(-800, 800)
-    local y = math.random(400, 1200)
-    local z = math.random(-800, 800)
+    -- ОГРОМНАЯ СИЛА ФЛИНГА
+    local x = math.random(-1200, 1200)
+    local y = math.random(500, 1500)
+    local z = math.random(-1200, 1200)
     
-    -- Применяем скорость
+    -- Применяем скорость к RootPart
     rootPart.AssemblyLinearVelocity = Vector3.new(x, y, z)
     rootPart.AssemblyAngularVelocity = Vector3.new(
-        math.random(-150, 150),
-        math.random(-150, 150),
-        math.random(-150, 150)
+        math.random(-200, 200),
+        math.random(-200, 200),
+        math.random(-200, 200)
     )
     
-    -- Дополнительно толкаем все части тела
+    -- Толкаем все части тела для максимального эффекта
     for _, part in ipairs(player.Character:GetChildren()) do
         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
             part.AssemblyLinearVelocity = Vector3.new(
-                math.random(-300, 300),
-                math.random(200, 600),
-                math.random(-300, 300)
+                math.random(-400, 400),
+                math.random(300, 800),
+                math.random(-400, 400)
             )
         end
     end
     
     -- Возвращаем владельца
-    task.wait(0.15)
-    rootPart:SetNetworkOwner(player)
+    task.wait(0.1)
+    if rootPart and rootPart.Parent then
+        rootPart:SetNetworkOwner(player)
+    end
+    
+    return true
 end
 
--- Флинг всех игроков
+-- Флинг всех игроков ПО ОЧЕРЕДИ
 local function flingAll()
+    if isFlingingNow then return end
+    isFlingingNow = true
+    
     local ignoreList = getIgnoredList()
     local players = Players:GetPlayers()
-    local flinged = 0
-    local ignored = 0
+    local flingedCount = 0
+    local totalPlayers = 0
     
+    -- Считаем сколько игроков будем флингать
+    for _, player in ipairs(players) do
+        if player ~= LocalPlayer and player.Character then
+            local isIgnored = false
+            for _, name in ipairs(ignoreList) do
+                if player.Name:lower() == name then
+                    isIgnored = true
+                    break
+                end
+            end
+            if not isIgnored then
+                totalPlayers = totalPlayers + 1
+            end
+        end
+    end
+    
+    if totalPlayers == 0 then
+        StatusText.Text = "⚠ НЕТ ИГРОКОВ ДЛЯ ФЛИНГА"
+        StatusText.TextColor3 = Color3.fromRGB(255, 200, 0)
+        isFlingingNow = false
+        return
+    end
+    
+    StatusText.Text = "🔄 ФЛИНГ НАЧАЛСЯ (0/" .. totalPlayers .. ")"
+    StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
+    ProgressLabel.Text = "Начинаем флинг..."
+    
+    local current = 0
     for _, player in ipairs(players) do
         if player ~= LocalPlayer and player.Character then
             local isIgnored = false
@@ -251,17 +304,31 @@ local function flingAll()
             end
             
             if not isIgnored then
-                pcall(function() flingPlayer(player) end)
-                flinged = flinged + 1
-            else
-                ignored = ignored + 1
+                current = current + 1
+                ProgressLabel.Text = "Флингую: " .. player.Name .. " (" .. current .. "/" .. totalPlayers .. ")"
+                StatusText.Text = "🔄 ФЛИНГ: " .. current .. "/" .. totalPlayers
+                
+                -- Задержка между флингами (0.2-0.4 секунды)
+                local success = flingPlayer(player, 0)
+                if success then
+                    flingedCount = flingedCount + 1
+                end
+                
+                updateStats(flingedCount)
+                
+                -- Небольшая задержка между игроками
+                task.wait(0.3)
             end
         end
     end
     
-    StatusText.Text = "✓ ФЛИНГНУТО: " .. flinged .. " игроков"
+    -- Завершение
+    StatusText.Text = "✅ ФЛИНГ ЗАВЕРШЕН! (" .. flingedCount .. "/" .. totalPlayers .. ")"
     StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-    updateStats()
+    ProgressLabel.Text = "Готово! Следующий флинг через 10 сек"
+    updateStats(flingedCount)
+    
+    isFlingingNow = false
 end
 
 -- Запуск цикла
@@ -271,13 +338,16 @@ local function startFlinging()
     
     FlingBtn.Text = "⏹ ОСТАНОВИТЬ"
     FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    StatusText.Text = "● ФЛИНГ АКТИВЕН (каждые 10 сек)"
+    StatusText.Text = "● ФЛИНГ АКТИВЕН"
     StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
+    ProgressLabel.Text = "Ожидание первого флинга..."
     
-    -- Первый флинг
-    task.spawn(flingAll)
+    -- Первый флинг сразу
+    task.spawn(function()
+        flingAll()
+    end)
     
-    -- Таймер
+    -- Таймер на 10 секунд
     flingTimer = RunService.Heartbeat:Connect(function()
         if not isFlinging then return end
         if not flingTimer._last then
@@ -285,7 +355,9 @@ local function startFlinging()
         end
         if tick() - flingTimer._last >= 10 then
             flingTimer._last = tick()
-            task.spawn(flingAll)
+            if not isFlingingNow then
+                task.spawn(flingAll)
+            end
         end
     end)
 end
@@ -304,6 +376,7 @@ local function stopFlinging()
     FlingBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
     StatusText.Text = "● СТАТУС: ОСТАНОВЛЕН"
     StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+    ProgressLabel.Text = "Остановлен"
 end
 
 -- Кнопка запуска/остановки
@@ -320,45 +393,46 @@ local minimized = false
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
-        MainFrame.Size = UDim2.new(0, 380, 0, 45)
-        GlowFrame.Size = UDim2.new(0, 390, 0, 55)
+        MainFrame.Size = UDim2.new(0, 420, 0, 50)
+        GlowFrame.Size = UDim2.new(0, 430, 0, 60)
         MinBtn.Text = "+"
         InputBox.Visible = false
         StatsText.Visible = false
         StatusText.Visible = false
         FlingBtn.Visible = false
         InfoText.Visible = false
+        ProgressLabel.Visible = false
         Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ [▼]"
     else
-        MainFrame.Size = UDim2.new(0, 380, 0, 280)
-        GlowFrame.Size = UDim2.new(0, 390, 0, 290)
+        MainFrame.Size = UDim2.new(0, 420, 0, 320)
+        GlowFrame.Size = UDim2.new(0, 430, 0, 330)
         MinBtn.Text = "_"
         InputBox.Visible = true
         StatsText.Visible = true
         StatusText.Visible = true
         FlingBtn.Visible = true
         InfoText.Visible = true
-        Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ ⚡"
+        ProgressLabel.Visible = true
+        Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.1⚡"
     end
 end)
 
 -- Обновление статистики при вводе
-InputBox:GetPropertyChangedSignal("Text"):Connect(updateStats)
+InputBox:GetPropertyChangedSignal("Text"):Connect(function()
+    updateStats(0)
+end)
 
 -- Обновление при изменении игроков
-Players.PlayerAdded:Connect(updateStats)
-Players.PlayerRemoving:Connect(updateStats)
+Players.PlayerAdded:Connect(function()
+    updateStats(0)
+end)
+Players.PlayerRemoving:Connect(function()
+    updateStats(0)
+end)
 
 -- Инициализация
-updateStats()
+updateStats(0)
 
-print("✅ НЕОНОВЫЙ ФЛИНГ ЗАГРУЖЕН!")
-print("📌 Интерфейс должен появиться в центре экрана")
-print("⚡ Введи никнеймы для защиты через запятую")
-
--- Если интерфейс не появился, создаем в CoreGui
-task.wait(1)
-if not ScreenGui.Parent then
-    warn("⚠️ GUI не отобразился, пробуем CoreGui...")
-    ScreenGui.Parent = game:GetService("CoreGui")
-end
+print("✅ НЕОНОВЫЙ ФЛИНГ v2.0 ЗАГРУЖЕН!")
+print("📌 Теперь флингает игроков ПО ОЧЕРЕДИ с задержкой!")
+print("⚡ Каждые 10 секунд проходит по всем игрокам")
