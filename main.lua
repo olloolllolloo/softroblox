@@ -1,5 +1,5 @@
--- НЕОНОВЫЙ ФЛИНГ - ИСПРАВЛЕННАЯ ВЕРСИЯ
--- Флингает ТОЛЬКО других игроков, не вас
+-- НЕОНОВЫЙ ФЛИНГ - АГРЕССИВНЫЙ РЕЖИМ
+-- Телепортится прямо в игрока и флингает его 3 секунды, потом следующий
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -19,8 +19,8 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Главное окно
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 280)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
+MainFrame.Size = UDim2.new(0, 300, 0, 250)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -30,7 +30,7 @@ MainFrame.Parent = ScreenGui
 local GlowFrame = Instance.new("Frame")
 GlowFrame.Size = MainFrame.Size + UDim2.new(0, 8, 0, 8)
 GlowFrame.Position = MainFrame.Position - UDim2.new(0, 4, 0, 4)
-GlowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+GlowFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 GlowFrame.BackgroundTransparency = 0.85
 GlowFrame.BorderSizePixel = 0
 GlowFrame.Parent = ScreenGui
@@ -52,7 +52,7 @@ local function createNeonButton(text, parent, posY)
     btn.BackgroundTransparency = 0.3
     btn.BorderSizePixel = 0
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(0, 255, 255)
+    btn.TextColor3 = Color3.fromRGB(255, 0, 0)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamBold
     btn.Parent = parent
@@ -63,7 +63,7 @@ local function createNeonButton(text, parent, posY)
     
     local stroke = Instance.new("UIStroke")
     stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(0, 255, 255)
+    stroke.Color = Color3.fromRGB(255, 0, 0)
     stroke.Transparency = 0.6
     stroke.Parent = btn
     
@@ -74,8 +74,8 @@ end
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.6⚡"
-Title.TextColor3 = Color3.fromRGB(0, 255, 255)
+Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ 1.6💀"
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.Parent = MainFrame
@@ -87,7 +87,7 @@ MinBtn.Position = UDim2.new(1, -40, 0, 3)
 MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
 MinBtn.BackgroundTransparency = 0.5
 MinBtn.Text = "_"
-MinBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+MinBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
 MinBtn.TextSize = 20
 MinBtn.BorderSizePixel = 0
 MinBtn.Parent = MainFrame
@@ -145,22 +145,10 @@ StatusText.Font = Enum.Font.GothamBold
 StatusText.TextXAlignment = Enum.TextXAlignment.Left
 StatusText.Parent = MainFrame
 
--- Статистика
-local StatsText = Instance.new("TextLabel")
-StatsText.Size = UDim2.new(0, 260, 0, 22)
-StatsText.Position = UDim2.new(0.5, -130, 0, 118)
-StatsText.BackgroundTransparency = 1
-StatsText.Text = "Игроков: 0 | Защищено: 0 | Флингнуто: 0"
-StatsText.TextColor3 = Color3.fromRGB(150, 150, 200)
-StatsText.TextSize = 12
-StatsText.Font = Enum.Font.Gotham
-StatsText.TextXAlignment = Enum.TextXAlignment.Left
-StatsText.Parent = MainFrame
-
 -- Прогресс флинга
 local ProgressLabel = Instance.new("TextLabel")
 ProgressLabel.Size = UDim2.new(0, 260, 0, 22)
-ProgressLabel.Position = UDim2.new(0.5, -130, 0, 143)
+ProgressLabel.Position = UDim2.new(0.5, -130, 0, 118)
 ProgressLabel.BackgroundTransparency = 1
 ProgressLabel.Text = "Ожидание..."
 ProgressLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -170,14 +158,14 @@ ProgressLabel.TextXAlignment = Enum.TextXAlignment.Left
 ProgressLabel.Parent = MainFrame
 
 -- Кнопка запуска
-local FlingBtn = createNeonButton("▶ ЗАПУСТИТЬ ФЛИНГ", MainFrame, 175)
+local FlingBtn = createNeonButton("▶ ЗАПУСТИТЬ ФЛИНГ", MainFrame, 150)
 
 -- Информация
 local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(0, 260, 0, 25)
-InfoText.Position = UDim2.new(0.5, -130, 0, 228)
+InfoText.Position = UDim2.new(0.5, -130, 0, 200)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Флинг каждые 10 сек | v5.0 FIX"
+InfoText.Text = "3 сек на игрока | Агрессивный режим"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -186,7 +174,8 @@ InfoText.Parent = MainFrame
 
 -- Переменные состояния
 local isFlinging = false
-local isFlingingNow = false
+local currentTarget = nil
+local flingConnection = nil
 
 -- Получение игнорируемых игроков
 local function getIgnoredList()
@@ -203,92 +192,12 @@ local function getIgnoredList()
     return list
 end
 
--- Обновление статистики
-local function updateStats(flingedCount)
-    local total = #Players:GetPlayers()
-    local ignored = #getIgnoredList()
-    local flinged = flingedCount or 0
-    StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored .. " | Флингнуто: " .. flinged
-end
-
--- ФЛИНГ ИГРОКА (флингает ТОЛЬКО цель, не вас)
-local function flingPlayer(targetPlayer)
-    if not targetPlayer or targetPlayer == LocalPlayer then return false end
-    
-    local character = targetPlayer.Character
-    if not character then return false end
-    
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return false end
-    
-    -- Захватываем сетевое владение цели
-    pcall(function()
-        hrp:SetNetworkOwner(nil)
-        hrp.Anchored = false
-    end)
-    
-    task.wait(0.05)
-    
-    -- Флингуем ТОЛЬКО цель (НЕ СЕБЯ)
-    pcall(function()
-        -- Огромная скорость для цели
-        hrp.Velocity = Vector3.new(
-            math.random(-50000, 50000),
-            math.random(50000, 100000),
-            math.random(-50000, 50000)
-        )
-        hrp.RotVelocity = Vector3.new(
-            math.random(-5000, 5000),
-            math.random(-5000, 5000),
-            math.random(-5000, 5000)
-        )
-    end)
-    
-    -- Флингуем все части тела ЦЕЛИ
-    for _, part in ipairs(character:GetChildren()) do
-        if part:IsA("BasePart") and part ~= hrp then
-            pcall(function()
-                part.Velocity = Vector3.new(
-                    math.random(-50000, 50000),
-                    math.random(50000, 100000),
-                    math.random(-50000, 50000)
-                )
-                part.RotVelocity = Vector3.new(
-                    math.random(-3000, 3000),
-                    math.random(-3000, 3000),
-                    math.random(-3000, 3000)
-                )
-            end)
-        end
-    end
-    
-    task.wait(0.1)
-    
-    -- Возвращаем владельца цели
-    pcall(function()
-        if hrp and hrp.Parent then
-            hrp:SetNetworkOwner(targetPlayer)
-        end
-    end)
-    
-    return true
-end
-
--- Флинг всех игроков ПО ОЧЕРЕДИ
-local function flingAll()
-    if isFlingingNow then return end
-    isFlingingNow = true
-    
+-- Получение списка целей
+local function getTargets()
     local ignoreList = getIgnoredList()
-    local players = Players:GetPlayers()
-    local flingedCount = 0
-    
-    -- Фильтруем игроков
     local targets = {}
-    for _, player in ipairs(players) do
+    
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local isIgnored = false
             for _, name in ipairs(ignoreList) do
@@ -297,95 +206,164 @@ local function flingAll()
                     break
                 end
             end
-            if not isIgnored and player.Character then
+            if not isIgnored then
                 table.insert(targets, player)
             end
         end
     end
     
-    local totalTargets = #targets
+    return targets
+end
+
+-- АГРЕССИВНЫЙ ФЛИНГ - телепорт в голову и флинг
+local function aggressiveFling(targetPlayer)
+    if not targetPlayer or targetPlayer == LocalPlayer then return false end
     
-    if totalTargets == 0 then
+    local myChar = LocalPlayer.Character
+    if not myChar then return false end
+    
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return false end
+    
+    local targetChar = targetPlayer.Character
+    if not targetChar then return false end
+    
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return false end
+    
+    local targetHumanoid = targetChar:FindFirstChild("Humanoid")
+    if not targetHumanoid or targetHumanoid.Health <= 0 then return false end
+    
+    -- Телепортируемся ПРЯМО В ГОЛОВУ игрока
+    local targetHead = targetChar:FindFirstChild("Head")
+    local tpPos = targetHead and targetHead.Position or targetHRP.Position
+    
+    pcall(function()
+        myHRP.CFrame = CFrame.new(tpPos)
+    end)
+    
+    -- Захватываем сетевое владение цели
+    pcall(function()
+        targetHRP:SetNetworkOwner(nil)
+        targetHRP.Anchored = false
+    end)
+    
+    -- МЕГА-ФЛИНГ цели
+    pcall(function()
+        targetHRP.Velocity = Vector3.new(
+            math.random(-100000, 100000),
+            math.random(50000, 150000),
+            math.random(-100000, 100000)
+        )
+        targetHRP.RotVelocity = Vector3.new(
+            math.random(-10000, 10000),
+            math.random(-10000, 10000),
+            math.random(-10000, 10000)
+        )
+        targetHRP.AssemblyLinearVelocity = Vector3.new(
+            math.random(-100000, 100000),
+            math.random(50000, 150000),
+            math.random(-100000, 100000)
+        )
+    end)
+    
+    -- Флингуем ВСЕ части тела цели
+    for _, part in ipairs(targetChar:GetChildren()) do
+        if part:IsA("BasePart") then
+            pcall(function()
+                part.Velocity = Vector3.new(
+                    math.random(-100000, 100000),
+                    math.random(50000, 150000),
+                    math.random(-100000, 100000)
+                )
+                part.RotVelocity = Vector3.new(
+                    math.random(-5000, 5000),
+                    math.random(-5000, 5000),
+                    math.random(-5000, 5000)
+                )
+            end)
+        end
+    end
+    
+    -- Вырубаем Humanoid цели
+    pcall(function()
+        targetHumanoid.Sit = true
+        targetHumanoid.PlatformStand = true
+    end)
+    
+    return true
+end
+
+-- Основной цикл флинга
+local function flingLoop()
+    local targetIndex = 1
+    local targets = getTargets()
+    local timeOnTarget = 0
+    
+    if #targets == 0 then
         StatusText.Text = "⚠ НЕТ ЦЕЛЕЙ"
         StatusText.TextColor3 = Color3.fromRGB(255, 200, 0)
-        isFlingingNow = false
         return
     end
     
-    -- Флингаем каждого с задержкой
-    for i, targetPlayer in ipairs(targets) do
-        if not isFlinging then break end
+    StatusText.Text = "💀 ФЛИНГ АКТИВЕН"
+    StatusText.TextColor3 = Color3.fromRGB(255, 0, 0)
+    
+    flingConnection = RunService.RenderStepped:Connect(function(deltaTime)
+        if not isFlinging then return end
         
-        ProgressLabel.Text = "🎯 " .. targetPlayer.Name .. " (" .. i .. "/" .. totalTargets .. ")"
-        StatusText.Text = "🔄 ФЛИНГ: " .. i .. "/" .. totalTargets
-        StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
+        timeOnTarget = timeOnTarget + deltaTime
         
-        local success = flingPlayer(targetPlayer)
-        if success then
-            flingedCount = flingedCount + 1
+        -- Обновляем список целей
+        targets = getTargets()
+        
+        if #targets == 0 then
+            ProgressLabel.Text = "Нет целей..."
+            return
         end
         
-        updateStats(flingedCount)
-        
-        -- Задержка 3 секунды между игроками
-        if i < totalTargets then
-            for waitTime = 3, 1, -1 do
-                if not isFlinging then break end
-                ProgressLabel.Text = "Следующий через " .. waitTime .. " сек... (" .. i .. "/" .. totalTargets .. ")"
-                task.wait(1)
+        -- Если прошло 3 секунды, переключаемся на следующего
+        if timeOnTarget >= 3 then
+            timeOnTarget = 0
+            targetIndex = targetIndex + 1
+            if targetIndex > #targets then
+                targetIndex = 1
             end
         end
-    end
-    
-    -- Завершение
-    if isFlinging then
-        StatusText.Text = "✅ ГОТОВО: " .. flingedCount .. "/" .. totalTargets
-        StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-        ProgressLabel.Text = "Следующая волна через 10 сек..."
-    end
-    
-    updateStats(flingedCount)
-    isFlingingNow = false
+        
+        -- Текущая цель
+        local target = targets[targetIndex]
+        if target then
+            ProgressLabel.Text = "💀 " .. target.Name .. " (" .. targetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timeOnTarget) .. "с"
+            
+            -- Флингуем цель каждый кадр
+            aggressiveFling(target)
+        end
+    end)
 end
 
--- Запуск цикла
+-- Запуск
 local function startFlinging()
     if isFlinging then return end
     isFlinging = true
     
     FlingBtn.Text = "⏹ ОСТАНОВИТЬ"
     FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    StatusText.Text = "● ФЛИНГ АКТИВЕН"
-    StatusText.TextColor3 = Color3.fromRGB(0, 255, 255)
-    ProgressLabel.Text = "Запуск..."
     
-    -- Функция цикла
-    local function flingCycle()
-        while isFlinging do
-            if not isFlingingNow then
-                flingAll()
-            end
-            -- Ждем 10 секунд до следующей волны
-            local waited = 0
-            while waited < 10 and isFlinging do
-                local remaining = 10 - waited
-                ProgressLabel.Text = "Следующая волна через " .. math.ceil(remaining) .. " сек..."
-                task.wait(1)
-                waited = waited + 1
-            end
-        end
-    end
-    
-    -- Запускаем цикл
-    task.spawn(flingCycle)
+    flingLoop()
 end
 
--- Остановка цикла
+-- Остановка
 local function stopFlinging()
     isFlinging = false
     
+    if flingConnection then
+        flingConnection:Disconnect()
+        flingConnection = nil
+    end
+    
     FlingBtn.Text = "▶ ЗАПУСТИТЬ ФЛИНГ"
-    FlingBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+    FlingBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
     StatusText.Text = "● СТАТУС: ОСТАНОВЛЕН"
     StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
     ProgressLabel.Text = "Остановлен"
@@ -409,14 +387,14 @@ local elementsToHide = {}
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
-        elementsToHide = {InputBox, StatsText, StatusText, FlingBtn, InfoText, ProgressLabel}
+        elementsToHide = {InputBox, StatusText, FlingBtn, InfoText, ProgressLabel}
         for _, elem in ipairs(elementsToHide) do
             elem.Visible = false
         end
         MainFrame.Size = UDim2.new(0, 300, 0, 50)
         GlowFrame.Size = UDim2.new(0, 308, 0, 58)
         MinBtn.Text = "+"
-        Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ [▼]"
+        Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ [▼]"
     else
         MainFrame.Size = originalSize
         GlowFrame.Size = originalGlowSize
@@ -424,31 +402,16 @@ MinBtn.MouseButton1Click:Connect(function()
         for _, elem in ipairs(elementsToHide) do
             elem.Visible = true
         end
-        Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ ⚡"
+        Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ 💀"
     end
 end)
 
 -- Закрытие
 CloseBtn.MouseButton1Click:Connect(function()
+    stopFlinging()
     ScreenGui:Destroy()
 end)
 
--- Обновление статистики при вводе
-InputBox:GetPropertyChangedSignal("Text"):Connect(function()
-    updateStats(0)
-end)
-
--- Обновление при изменении игроков
-Players.PlayerAdded:Connect(function()
-    updateStats(0)
-end)
-Players.PlayerRemoving:Connect(function()
-    updateStats(0)
-end)
-
--- Инициализация
-updateStats(0)
-
-print("✅ НЕОНОВЫЙ ФЛИНГ v5.0 FIX ЗАГРУЖЕН!")
-print("🎯 Флингает ТОЛЬКО других игроков, не вас!")
-print("⏱ Задержка 3 сек между игроками, 10 сек между волнами!")
+print("💀 АГРЕССИВНЫЙ ФЛИНГ ЗАГРУЖЕН!")
+print("🔥 Телепорт прямо в голову + флинг каждый кадр!")
+print("⏱ 3 секунды на игрока, потом следующий по кругу!")
