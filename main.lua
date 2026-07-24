@@ -1,4 +1,4 @@
--- ФЛИНГ ИЗ ТВОЕГО КОДА - МАКС МОЩНОСТЬ
+-- ФЛИНГ + ФОЛЛОУ ТП + СПИСОК ЗАЩИТЫ
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -7,59 +7,145 @@ if not player.Character then
     player.CharacterAdded:Wait()
 end
 
--- Простая кнопка
+-- GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Fling"
+ScreenGui.Name = "FlingGUI"
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
-local Btn = Instance.new("TextButton")
-Btn.Size = UDim2.new(0, 150, 0, 50)
-Btn.Position = UDim2.new(0.5, -75, 0.5, -25)
-Btn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-Btn.Text = "FLING OFF"
-Btn.TextColor3 = Color3.fromRGB(255, 0, 0)
-Btn.TextSize = 20
-Btn.Font = Enum.Font.GothamBold
-Btn.Parent = ScreenGui
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 160)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
 
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 10)
-Corner.Parent = Btn
+Corner.Parent = MainFrame
 
-local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(255, 0, 0)
-Stroke.Thickness = 2
-Stroke.Parent = Btn
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.BackgroundTransparency = 1
+Title.Text = "FLING + FOLLOW TP"
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
+Title.TextSize = 16
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
 
--- ТОЧНО ТАКОЙ ЖЕ ФЛИНГ КАК В ТВОЁМ КОДЕ
-local States = {Fling = false}
+-- Поле ввода защиты
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(0, 210, 0, 30)
+InputBox.Position = UDim2.new(0.5, -105, 0, 30)
+InputBox.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+InputBox.BorderSizePixel = 0
+InputBox.Text = ""
+InputBox.PlaceholderText = "Никнеймы через запятую"
+InputBox.TextColor3 = Color3.fromRGB(200, 200, 255)
+InputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 180)
+InputBox.Font = Enum.Font.Gotham
+InputBox.TextSize = 12
+InputBox.ClearTextOnFocus = false
+InputBox.Parent = MainFrame
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 5)
+InputCorner.Parent = InputBox
+
+-- Кнопка флинга
+local FlingBtn = Instance.new("TextButton")
+FlingBtn.Size = UDim2.new(0, 210, 0, 40)
+FlingBtn.Position = UDim2.new(0.5, -105, 0, 70)
+FlingBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+FlingBtn.Text = "FLING + TP OFF"
+FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+FlingBtn.TextSize = 16
+FlingBtn.Font = Enum.Font.GothamBold
+FlingBtn.Parent = MainFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.Parent = FlingBtn
+
+-- Статус
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, 0, 0, 20)
+StatusText.Position = UDim2.new(0, 0, 0, 120)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = ""
+StatusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusText.TextSize = 12
+StatusText.Font = Enum.Font.Gotham
+StatusText.Parent = MainFrame
+
+-- ПЕРЕМЕННЫЕ
+local isActive = false
 local flingThread = nil
+local followConnection = nil
+local currentTargetIndex = 1
+local timer = 0
 
-local function flingLoop()
+local function getIgnoredList()
+    local text = InputBox.Text
+    local list = {}
+    if text ~= "" then
+        for name in string.gmatch(text, "([^,]+)") do
+            local clean = name:gsub("^%s*(.-)%s*$", "%1"):lower()
+            if clean ~= "" then
+                table.insert(list, clean)
+            end
+        end
+    end
+    return list
+end
+
+local function getTargets()
+    local ignoreList = getIgnoredList()
+    local targets = {}
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player then
+            local isIgnored = false
+            for _, name in ipairs(ignoreList) do
+                if p.Name:lower() == name then
+                    isIgnored = true
+                    break
+                end
+            end
+            if not isIgnored and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(targets, p)
+            end
+        end
+    end
+    
+    return targets
+end
+
+-- ФЛИНГ (ТОЧНО КАК В ТВОЁМ КОДЕ)
+local function doFling()
     local hrp, c, vel, movel = nil, nil, nil, 0.1
-
-    while States.Fling do
+    
+    while isActive do
         RunService.Heartbeat:Wait()
-
-        if States.Fling then
-            while States.Fling and not (c and c.Parent and hrp and hrp.Parent) do
+        
+        if isActive then
+            while isActive and not (c and c.Parent and hrp and hrp.Parent) do
                 RunService.Heartbeat:Wait()
                 c = player.Character
                 hrp = c and c:FindFirstChild("HumanoidRootPart")
             end
-
-            if States.Fling and c and c.Parent and hrp and hrp.Parent then
+            
+            if isActive and c and c.Parent and hrp and hrp.Parent then
                 vel = hrp.Velocity
-                -- МАКСИМАЛЬНАЯ МОЩНОСТЬ 55000
                 hrp.Velocity = vel * 55000 + Vector3.new(0, 55000, 0)
                 RunService.RenderStepped:Wait()
-
+                
                 if c and c.Parent and hrp and hrp.Parent then
                     hrp.Velocity = vel
                 end
-
+                
                 RunService.Stepped:Wait()
-
+                
                 if c and c.Parent and hrp and hrp.Parent then
                     hrp.Velocity = vel + Vector3.new(0, movel, 0)
                     movel = movel * -1
@@ -69,42 +155,93 @@ local function flingLoop()
     end
 end
 
-local function startFling()
-    if flingThread then
-        States.Fling = false
-        task.cancel(flingThread)
-        flingThread = nil
-    end
-
-    States.Fling = true
-    flingThread = task.spawn(flingLoop)
-    Btn.Text = "FLING ON"
-    Btn.TextColor3 = Color3.fromRGB(0, 255, 0)
-    Stroke.Color = Color3.fromRGB(0, 255, 0)
+-- ФОЛЛОУ ТП + ПЕРЕКЛЮЧЕНИЕ ЦЕЛИ КАЖДЫЕ 3 СЕК
+local function followTPLoop()
+    followConnection = RunService.RenderStepped:Connect(function(deltaTime)
+        if not isActive then return end
+        
+        timer = timer + deltaTime
+        
+        local targets = getTargets()
+        
+        if #targets == 0 then
+            StatusText.Text = "Нет целей..."
+            return
+        end
+        
+        -- Каждые 3 секунды переключаем цель
+        if timer >= 3 then
+            timer = 0
+            currentTargetIndex = currentTargetIndex + 1
+            if currentTargetIndex > #targets then
+                currentTargetIndex = 1
+            end
+        end
+        
+        -- Текущая цель
+        local target = targets[currentTargetIndex]
+        if target and target.Character then
+            local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+            local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetHRP and myHRP then
+                -- ТЕЛЕПОРТ ПРЯМО ВНУТРЬ ИГРОКА
+                pcall(function()
+                    myHRP.CFrame = targetHRP.CFrame
+                end)
+                
+                StatusText.Text = "💀 " .. target.Name .. " (" .. currentTargetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timer) .. "с"
+            end
+        end
+    end)
 end
 
-local function stopFling()
-    States.Fling = false
+-- ЗАПУСК
+local function start()
+    if isActive then return end
+    isActive = true
+    
+    timer = 0
+    currentTargetIndex = 1
+    
+    flingThread = task.spawn(doFling)
+    followTPLoop()
+    
+    FlingBtn.Text = "FLING + TP ON"
+    FlingBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+    StatusText.Text = "Запуск..."
+end
+
+-- СТОП
+local function stop()
+    isActive = false
+    
     if flingThread then
         task.cancel(flingThread)
         flingThread = nil
     end
-
+    
+    if followConnection then
+        followConnection:Disconnect()
+        followConnection = nil
+    end
+    
+    -- Сбрасываем скорость
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.Velocity = Vector3.new(0, 0, 0)
         hrp.RotVelocity = Vector3.new(0, 0, 0)
     end
-
-    Btn.Text = "FLING OFF"
-    Btn.TextColor3 = Color3.fromRGB(255, 0, 0)
-    Stroke.Color = Color3.fromRGB(255, 0, 0)
+    
+    FlingBtn.Text = "FLING + TP OFF"
+    FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    StatusText.Text = "Остановлен"
 end
 
-Btn.MouseButton1Click:Connect(function()
-    if States.Fling then
-        stopFling()
+FlingBtn.MouseButton1Click:Connect(function()
+    if isActive then
+        stop()
     else
-        startFling()
+        start()
     end
 end)
