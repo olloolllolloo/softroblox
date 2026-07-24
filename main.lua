@@ -1,5 +1,5 @@
--- НЕОНОВЫЙ ФЛИНГ - ВЕРСИЯ С ТЕЛЕПОРТАЦИЕЙ
--- Телепортируется к каждому игроку и флингает его
+-- НЕОНОВЫЙ ФЛИНГ - ИСПРАВЛЕННАЯ ВЕРСИЯ
+-- Флингает ТОЛЬКО других игроков, не вас
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -74,7 +74,7 @@ end
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.5⚡"
+Title.Text = "⚡ НЕОНОВЫЙ ФЛИНГ 1.6⚡"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -177,7 +177,7 @@ local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(0, 260, 0, 25)
 InfoText.Position = UDim2.new(0.5, -130, 0, 228)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Флинг каждые 10 сек | v4.0 TP"
+InfoText.Text = "Флинг каждые 10 сек | v5.0 FIX"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -211,7 +211,7 @@ local function updateStats(flingedCount)
     StatsText.Text = "Игроков: " .. total .. " | Защищено: " .. ignored .. " | Флингнуто: " .. flinged
 end
 
--- ФЛИНГ ИГРОКА (рабочий метод из вашего кода)
+-- ФЛИНГ ИГРОКА (флингает ТОЛЬКО цель, не вас)
 local function flingPlayer(targetPlayer)
     if not targetPlayer or targetPlayer == LocalPlayer then return false end
     
@@ -224,31 +224,18 @@ local function flingPlayer(targetPlayer)
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid or humanoid.Health <= 0 then return false end
     
-    -- Сохраняем текущую позицию своего персонажа
-    local myChar = LocalPlayer.Character
-    if not myChar then return false end
-    
-    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return false end
-    
-    local myOriginalPos = myHRP.Position
-    
-    -- Телепортируемся к цели
-    local targetPos = hrp.Position
-    myHRP.CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0))
-    
-    task.wait(0.1)
-    
-    -- Пытаемся захватить сетевое владение
+    -- Захватываем сетевое владение цели
     pcall(function()
         hrp:SetNetworkOwner(nil)
         hrp.Anchored = false
     end)
     
-    -- Мощный флинг цели
+    task.wait(0.05)
+    
+    -- Флингуем ТОЛЬКО цель (НЕ СЕБЯ)
     pcall(function()
-        local vel = hrp.Velocity
-        hrp.Velocity = vel * 5000 + Vector3.new(
+        -- Огромная скорость для цели
+        hrp.Velocity = Vector3.new(
             math.random(-50000, 50000),
             math.random(50000, 100000),
             math.random(-50000, 50000)
@@ -260,7 +247,7 @@ local function flingPlayer(targetPlayer)
         )
     end)
     
-    -- Флингуем все части тела цели
+    -- Флингуем все части тела ЦЕЛИ
     for _, part in ipairs(character:GetChildren()) do
         if part:IsA("BasePart") and part ~= hrp then
             pcall(function()
@@ -280,24 +267,17 @@ local function flingPlayer(targetPlayer)
     
     task.wait(0.1)
     
-    -- Возвращаем владельца
+    -- Возвращаем владельца цели
     pcall(function()
         if hrp and hrp.Parent then
             hrp:SetNetworkOwner(targetPlayer)
         end
     end)
     
-    -- Возвращаемся на свою позицию
-    pcall(function()
-        if myHRP and myHRP.Parent then
-            myHRP.CFrame = CFrame.new(myOriginalPos)
-        end
-    end)
-    
     return true
 end
 
--- Флинг всех игроков ПО ОЧЕРЕДИ с телепортацией
+-- Флинг всех игроков ПО ОЧЕРЕДИ
 local function flingAll()
     if isFlingingNow then return end
     isFlingingNow = true
@@ -332,7 +312,7 @@ local function flingAll()
         return
     end
     
-    -- Телепортируемся к каждому и флингаем
+    -- Флингаем каждого с задержкой
     for i, targetPlayer in ipairs(targets) do
         if not isFlinging then break end
         
@@ -469,6 +449,6 @@ end)
 -- Инициализация
 updateStats(0)
 
-print("✅ НЕОНОВЫЙ ФЛИНГ v4.0 TP ЗАГРУЖЕН!")
-print("📍 Телепортируется к игрокам и флингает их!")
+print("✅ НЕОНОВЫЙ ФЛИНГ v5.0 FIX ЗАГРУЖЕН!")
+print("🎯 Флингает ТОЛЬКО других игроков, не вас!")
 print("⏱ Задержка 3 сек между игроками, 10 сек между волнами!")
