@@ -1,6 +1,5 @@
--- 💗 ФЛИНГ + МГНОВЕННЫЙ ТЕЛЕПОРТ (РОЗОВАЯ КНОПКА) 💗
--- Полное отсутствие отставания – телепорт каждый кадр без задержек
-
+-- 💗 СЕРВЕРНЫЙ ФЛИНГ + ТП (РОЗОВАЯ КНОПКА) 💗
+-- Телепорт теперь виден серверу через SetNetworkOwner(nil)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -29,13 +28,12 @@ Corner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 24)
 Title.BackgroundTransparency = 1
-Title.Text = "💗 NEW FLING + TP 💗"
+Title.Text = "💗 NEW SERVER FLING 💗"
 Title.TextColor3 = Color3.fromRGB(255, 105, 180)
 Title.TextSize = 15
 Title.Font = Enum.Font.GothamBold
 Title.Parent = MainFrame
 
--- Поле защиты
 local InputBox = Instance.new("TextBox")
 InputBox.Size = UDim2.new(0, 220, 0, 30)
 InputBox.Position = UDim2.new(0.5, -110, 0, 30)
@@ -54,11 +52,10 @@ local InputCorner = Instance.new("UICorner")
 InputCorner.CornerRadius = UDim.new(0, 6)
 InputCorner.Parent = InputBox
 
--- РОЗОВАЯ КНОПКА ФЛИНГА
 local FlingBtn = Instance.new("TextButton")
 FlingBtn.Size = UDim2.new(0, 220, 0, 45)
 FlingBtn.Position = UDim2.new(0.5, -110, 0, 70)
-FlingBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 147) -- Ярко‑розовый
+FlingBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 147)
 FlingBtn.Text = "💗 FLING OFF"
 FlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FlingBtn.TextSize = 17
@@ -69,7 +66,6 @@ local BtnCorner = Instance.new("UICorner")
 BtnCorner.CornerRadius = UDim.new(0, 10)
 BtnCorner.Parent = FlingBtn
 
--- Статус
 local StatusText = Instance.new("TextLabel")
 StatusText.Size = UDim2.new(1, 0, 0, 20)
 StatusText.Position = UDim2.new(0, 0, 0, 125)
@@ -84,16 +80,13 @@ StatusText.Parent = MainFrame
 -- ==================== ПЕРЕМЕННЫЕ ====================
 local isActive = false
 local connection = nil
-
 local targetIndex = 1
 local timer = 0
-
--- Состояния флинга (вибрация)
-local flingPhase = 0           -- 0 → импульс, 1 → возврат, 2 → movel, 3 → завершение
+local flingPhase = 0
 local flingLastVel = Vector3.zero
 local flingMovel = 0.1
 
--- ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+-- ==================== ФУНКЦИИ ====================
 local function getIgnoredList()
     local text = InputBox.Text
     local list = {}
@@ -128,7 +121,7 @@ local function getTargets()
     return targets
 end
 
--- ==================== ГЛАВНЫЙ ЦИКЛ (RenderStepped, без ожиданий) ====================
+-- ==================== ГЛАВНЫЙ ЦИКЛ (СЕРВЕРНЫЙ ТЕЛЕПОРТ) ====================
 local function mainLoop(deltaTime)
     if not isActive then return end
 
@@ -155,12 +148,28 @@ local function mainLoop(deltaTime)
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local targetHRP = target.Character.HumanoidRootPart
 
-        -- 1. МГНОВЕННЫЙ ТЕЛЕПОРТ ВНУТРЬ ЦЕЛИ (каждый кадр)
+        -- 1. ЗАХВАТЫВАЕМ ВЛАДЕНИЕ СВОЕЙ HRP (чтобы сервер увидел телепорт)
+        pcall(function()
+            myHRP:SetNetworkOwner(nil)
+        end)
+
+        -- 2. СЕРВЕРНЫЙ ТЕЛЕПОРТ ВНУТРЬ ЦЕЛИ
         pcall(function()
             myHRP.CFrame = targetHRP.CFrame
         end)
 
-        -- 2. ФЛИНГ‑ВИБРАЦИЯ (потактовый автомат, как в оригинальном Morph Cheat)
+        -- 3. ЗАХВАТЫВАЕМ ВЛАДЕНИЕ ЦЕЛИ И ФЛИНГАЕМ ЕЁ
+        pcall(function()
+            targetHRP:SetNetworkOwner(nil)
+            targetHRP.Anchored = false
+            targetHRP.Velocity = Vector3.new(
+                math.random(-99999, 99999),
+                math.random(99999, 999999),
+                math.random(-99999, 99999)
+            )
+        end)
+
+        -- 4. ФЛИНГ-ВИБРАЦИЯ (как в оригинале, для усиления)
         if flingPhase == 0 then
             flingLastVel = myHRP.Velocity
             myHRP.Velocity = flingLastVel * 55000 + Vector3.new(0, 55000, 0)
@@ -172,10 +181,19 @@ local function mainLoop(deltaTime)
             myHRP.Velocity = flingLastVel + Vector3.new(0, flingMovel, 0)
             flingMovel = flingMovel * -1
             flingPhase = 3
-        else  -- phase == 3
-            -- завершаем цикл, на следующем кадре опять phase 0
+        else
             flingPhase = 0
         end
+
+        -- Возвращаем владение цели и себе (чтобы не глючило)
+        pcall(function()
+            if targetHRP and targetHRP.Parent then
+                targetHRP:SetNetworkOwner(target)
+            end
+            if myHRP and myHRP.Parent then
+                myHRP:SetNetworkOwner(player)
+            end
+        end)
 
         StatusText.Text = "💀 " .. target.Name .. " [" .. targetIndex .. "/" .. #targets .. "]  " .. string.format("%.1f", 3 - (timer % 3)) .. "с"
     end
@@ -204,7 +222,6 @@ local function stop()
         connection = nil
     end
 
-    -- Сбросим скорость
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.Velocity = Vector3.zero
@@ -224,4 +241,4 @@ FlingBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("💗 НОВЫЙ ФЛИНГ + ТП ЗАГРУЖЕН! (розовая кнопка)")
+print("💗 СЕРВЕРНЫЙ ФЛИНГ + ТП ЗАГРУЖЕН! (телепорт виден всем)")
