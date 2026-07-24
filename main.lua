@@ -1,5 +1,5 @@
--- НЕОНОВЫЙ ФЛИНГ - ФИНАЛЬНАЯ ВЕРСИЯ
--- Вы НЕ улетаете, только флингаете других
+-- НЕОНОВЫЙ ФЛИНГ - СЕРВЕРНАЯ ВЕРСИЯ
+-- Флингает через сервер, чтобы все видели
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -69,7 +69,7 @@ end
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ 💀"
+Title.Text = "💀 СЕРВЕРНЫЙ ФЛИНГ 💀"
 Title.TextColor3 = Color3.fromRGB(255, 0, 0)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -153,7 +153,7 @@ local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(0, 260, 0, 25)
 InfoText.Position = UDim2.new(0.5, -130, 0, 200)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "3 сек на игрока | Вы не улетаете"
+InfoText.Text = "3 сек на игрока | Серверный флинг"
 InfoText.TextColor3 = Color3.fromRGB(80, 80, 120)
 InfoText.TextSize = 11
 InfoText.Font = Enum.Font.Gotham
@@ -200,8 +200,8 @@ local function getTargets()
     return targets
 end
 
--- ФЛИНГ БЕЗ ТЕЛЕПОРТАЦИИ ВАС
-local function flingTargetOnly(targetPlayer)
+-- СЕРВЕРНЫЙ ФЛИНГ - использует сетевые методы которые видит сервер
+local function serverFling(targetPlayer)
     if not targetPlayer or targetPlayer == LocalPlayer then return false end
     
     local targetChar = targetPlayer.Character
@@ -213,39 +213,51 @@ local function flingTargetOnly(targetPlayer)
     local targetHumanoid = targetChar:FindFirstChild("Humanoid")
     if not targetHumanoid or targetHumanoid.Health <= 0 then return false end
     
-    -- Захватываем сетевое владение ТОЛЬКО цели
+    local myChar = LocalPlayer.Character
+    if not myChar then return false end
+    
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return false end
+    
+    -- Сохраняем позицию цели для телепорта
+    local targetPos = targetHRP.Position
+    
+    -- Телепортируемся к цели (СЕРВЕРНЫЙ телепорт через CFrame)
+    pcall(function()
+        myHRP.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+    end)
+    
+    -- Ждём синхронизации с сервером
+    task.wait(0.1)
+    
+    -- Захватываем сетевое владение цели
     pcall(function()
         targetHRP:SetNetworkOwner(nil)
         targetHRP.Anchored = false
     end)
     
-    -- Флингуем ТОЛЬКО цель
+    -- СЕРВЕРНЫЙ ФЛИНГ через Velocity
     pcall(function()
         targetHRP.Velocity = Vector3.new(
-            math.random(-100000, 100000),
-            math.random(50000, 150000),
-            math.random(-100000, 100000)
+            math.random(-50000, 50000),
+            math.random(50000, 100000),
+            math.random(-50000, 50000)
         )
         targetHRP.RotVelocity = Vector3.new(
             math.random(-10000, 10000),
             math.random(-10000, 10000),
             math.random(-10000, 10000)
         )
-        targetHRP.AssemblyLinearVelocity = Vector3.new(
-            math.random(-100000, 100000),
-            math.random(50000, 150000),
-            math.random(-100000, 100000)
-        )
     end)
     
-    -- Флингуем части тела ТОЛЬКО цели
+    -- Флингуем все части цели
     for _, part in ipairs(targetChar:GetChildren()) do
-        if part:IsA("BasePart") and part ~= targetHRP then
+        if part:IsA("BasePart") then
             pcall(function()
                 part.Velocity = Vector3.new(
-                    math.random(-100000, 100000),
-                    math.random(50000, 150000),
-                    math.random(-100000, 100000)
+                    math.random(-50000, 50000),
+                    math.random(50000, 100000),
+                    math.random(-50000, 50000)
                 )
                 part.RotVelocity = Vector3.new(
                     math.random(-5000, 5000),
@@ -256,53 +268,29 @@ local function flingTargetOnly(targetPlayer)
         end
     end
     
-    -- Вырубаем Humanoid цели
+    -- Вырубаем Humanoid
     pcall(function()
         targetHumanoid.Sit = true
         targetHumanoid.PlatformStand = true
     end)
     
-    return true
-end
-
--- ЗАЩИТА ВАШЕГО ПЕРСОНАЖА ОТ ФЛИНГА
-local function protectMyself()
-    local myChar = LocalPlayer.Character
-    if not myChar then return end
-    
-    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
-    
-    -- Обнуляем скорость СЕБЯ каждый кадр
+    -- Ждём и возвращаем владельца
+    task.wait(0.1)
     pcall(function()
-        myHRP.Velocity = Vector3.new(0, 0, 0)
-        myHRP.RotVelocity = Vector3.new(0, 0, 0)
-        myHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        myHRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    end)
-    
-    -- Обнуляем скорость всех своих частей
-    for _, part in ipairs(myChar:GetChildren()) do
-        if part:IsA("BasePart") then
-            pcall(function()
-                part.Velocity = Vector3.new(0, 0, 0)
-                part.RotVelocity = Vector3.new(0, 0, 0)
-            end)
+        if targetHRP and targetHRP.Parent then
+            targetHRP:SetNetworkOwner(targetPlayer)
         end
-    end
-    
-    -- Возвращаем себе сетевое владение
-    pcall(function()
-        myHRP:SetNetworkOwner(LocalPlayer)
-        myHRP.Anchored = false
     end)
+    
+    return true
 end
 
 -- Основной цикл
 local function flingLoop()
     local targetIndex = 1
-    local targets = getTargets()
     local timeOnTarget = 0
+    
+    local targets = getTargets()
     
     if #targets == 0 then
         StatusText.Text = "⚠ НЕТ ЦЕЛЕЙ"
@@ -313,11 +301,8 @@ local function flingLoop()
     StatusText.Text = "💀 ФЛИНГ АКТИВЕН"
     StatusText.TextColor3 = Color3.fromRGB(255, 0, 0)
     
-    flingConnection = RunService.RenderStepped:Connect(function(deltaTime)
+    flingConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if not isFlinging then return end
-        
-        -- СНАЧАЛА ЗАЩИЩАЕМ СЕБЯ
-        protectMyself()
         
         timeOnTarget = timeOnTarget + deltaTime
         targets = getTargets()
@@ -327,18 +312,25 @@ local function flingLoop()
             return
         end
         
+        -- Каждые 3 секунды переключаем цель и флингаем
         if timeOnTarget >= 3 then
             timeOnTarget = 0
+            
+            local target = targets[targetIndex]
+            if target then
+                ProgressLabel.Text = "💀 Флингаем: " .. target.Name
+                serverFling(target)
+            end
+            
             targetIndex = targetIndex + 1
             if targetIndex > #targets then
                 targetIndex = 1
             end
         end
         
-        local target = targets[targetIndex]
-        if target then
-            ProgressLabel.Text = "💀 " .. target.Name .. " (" .. targetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - timeOnTarget) .. "с"
-            flingTargetOnly(target)
+        local currentTarget = targets[targetIndex]
+        if currentTarget then
+            ProgressLabel.Text = "💀 " .. currentTarget.Name .. " (" .. targetIndex .. "/" .. #targets .. ") | Следующий через " .. string.format("%.1f", 3 - timeOnTarget) .. "с"
         end
     end)
 end
@@ -391,7 +383,7 @@ MinBtn.MouseButton1Click:Connect(function()
         MainFrame.Size = UDim2.new(0, 300, 0, 50)
         GlowFrame.Size = UDim2.new(0, 308, 0, 58)
         MinBtn.Text = "+"
-        Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ [▼]"
+        Title.Text = "💀 СЕРВЕРНЫЙ ФЛИНГ 67[▼]"
     else
         MainFrame.Size = originalSize
         GlowFrame.Size = originalGlowSize
@@ -399,7 +391,7 @@ MinBtn.MouseButton1Click:Connect(function()
         for _, elem in ipairs(elementsToHide) do
             elem.Visible = true
         end
-        Title.Text = "💀 АГРЕССИВНЫЙ ФЛИНГ 1.7💀"
+        Title.Text = "💀 СЕРВЕРНЫЙ ФЛИНГ 67💀"
     end
 end)
 
@@ -408,6 +400,6 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-print("💀 АГРЕССИВНЫЙ ФЛИНГ ЗАГРУЖЕН!")
-print("🛡 ВЫ НЕ УЛЕТАЕТЕ - защита от флинга себя!")
-print("🎯 Флингует только других игроков!")
+print("💀 СЕРВЕРНЫЙ ФЛИНГ ЗАГРУЖЕН!")
+print("🌐 Телепорт через CFrame видимый сервером!")
+print("🎯 Флинг через Velocity видимый всем!")
