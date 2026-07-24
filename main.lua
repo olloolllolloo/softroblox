@@ -1,4 +1,4 @@
--- ФЛИНГ + МГНОВЕННЫЙ ТЕЛЕПОРТ ВНУТРЬ + СПИСОК ЗАЩИТЫ
+-- ФЛИНГ + ТЕЛЕПОРТ БЕЗ ОТСТАВАНИЯ
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -27,13 +27,12 @@ Corner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.BackgroundTransparency = 1
-Title.Text = "FLING + FOLLOW TP"
+Title.Text = "FLING + TP (NO DELAY)"
 Title.TextColor3 = Color3.fromRGB(255, 0, 0)
 Title.TextSize = 16
 Title.Font = Enum.Font.GothamBold
 Title.Parent = MainFrame
 
--- Поле ввода защиты
 local InputBox = Instance.new("TextBox")
 InputBox.Size = UDim2.new(0, 210, 0, 30)
 InputBox.Position = UDim2.new(0.5, -105, 0, 30)
@@ -52,7 +51,6 @@ local InputCorner = Instance.new("UICorner")
 InputCorner.CornerRadius = UDim.new(0, 5)
 InputCorner.Parent = InputBox
 
--- Кнопка флинга
 local FlingBtn = Instance.new("TextButton")
 FlingBtn.Size = UDim2.new(0, 210, 0, 40)
 FlingBtn.Position = UDim2.new(0.5, -105, 0, 70)
@@ -67,7 +65,6 @@ local BtnCorner = Instance.new("UICorner")
 BtnCorner.CornerRadius = UDim.new(0, 8)
 BtnCorner.Parent = FlingBtn
 
--- Статус
 local StatusText = Instance.new("TextLabel")
 StatusText.Size = UDim2.new(1, 0, 0, 20)
 StatusText.Position = UDim2.new(0, 0, 0, 120)
@@ -78,11 +75,8 @@ StatusText.TextSize = 12
 StatusText.Font = Enum.Font.Gotham
 StatusText.Parent = MainFrame
 
--- ПЕРЕМЕННЫЕ
 local isActive = false
-local flingThread = nil
-local followConnection = nil
-local currentTarget = nil
+local connection = nil
 local targetIndex = 1
 local switchTimer = 0
 
@@ -122,129 +116,90 @@ local function getTargets()
     return targets
 end
 
--- ВСЁ В ОДНОМ ЦИКЛЕ - ТЕЛЕПОРТ + ФЛИНГ КАЖДЫЙ КАДР
-local function mainLoop()
-    local hrp, c, vel, movel = nil, nil, nil, 0.1
+-- ГЛАВНЫЙ ЦИКЛ - ИСПОЛЬЗУЕМ RenderStepped (60 FPS)
+local function mainLoop(deltaTime)
+    if not isActive then return end
     
-    while isActive do
-        -- Ждём персонажа
-        while isActive and not (c and c.Parent and hrp and hrp.Parent) do
-            RunService.Heartbeat:Wait()
-            c = player.Character
-            hrp = c and c:FindFirstChild("HumanoidRootPart")
-        end
-        
-        if not isActive then break end
-        
-        -- Получаем цели
-        local targets = getTargets()
-        
-        if #targets == 0 then
-            StatusText.Text = "Нет целей..."
-            RunService.Heartbeat:Wait()
-            continue
-        end
-        
-        -- Переключение цели каждые 3 секунды
-        switchTimer = switchTimer + RunService.Heartbeat:Wait()
-        if switchTimer >= 3 then
-            switchTimer = 0
-            targetIndex = targetIndex + 1
-            if targetIndex > #targets then
-                targetIndex = 1
-            end
-        end
-        
-        -- Текущая цель
-        currentTarget = targets[targetIndex]
-        
-        if currentTarget and currentTarget.Character then
-            local targetHRP = currentTarget.Character:FindFirstChild("HumanoidRootPart")
-            
-            if targetHRP and targetHRP.Parent and hrp and hrp.Parent then
-                -- МГНОВЕННЫЙ ТЕЛЕПОРТ ВНУТРЬ ЦЕЛИ
-                pcall(function()
-                    hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
-                end)
-                
-                -- СРАЗУ ФЛИНГ
-                vel = hrp.Velocity
-                pcall(function()
-                    hrp.Velocity = vel * 55000 + Vector3.new(0, 55000, 0)
-                end)
-                
-                -- Захватываем владельца цели для усиления
-                pcall(function()
-                    targetHRP:SetNetworkOwner(nil)
-                    targetHRP.Anchored = false
-                    targetHRP.Velocity = Vector3.new(
-                        math.random(-50000, 50000),
-                        math.random(50000, 100000),
-                        math.random(-50000, 50000)
-                    )
-                end)
-                
-                RunService.RenderStepped:Wait()
-                
-                if hrp and hrp.Parent then
-                    pcall(function()
-                        hrp.Velocity = vel
-                    end)
-                end
-                
-                RunService.Stepped:Wait()
-                
-                if hrp and hrp.Parent then
-                    pcall(function()
-                        hrp.Velocity = vel + Vector3.new(0, movel, 0)
-                    end)
-                    movel = movel * -1
-                end
-                
-                -- Возвращаем владельца цели
-                pcall(function()
-                    if targetHRP and targetHRP.Parent then
-                        targetHRP:SetNetworkOwner(currentTarget)
-                    end
-                end)
-                
-                StatusText.Text = "💀 " .. currentTarget.Name .. " (" .. targetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - switchTimer) .. "с"
-            end
+    local myChar = player.Character
+    if not myChar then return end
+    
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    
+    local targets = getTargets()
+    
+    if #targets == 0 then
+        StatusText.Text = "Нет целей..."
+        return
+    end
+    
+    -- Переключение цели каждые 3 секунды
+    switchTimer = switchTimer + deltaTime
+    if switchTimer >= 3 then
+        switchTimer = 0
+        targetIndex = targetIndex + 1
+        if targetIndex > #targets then
+            targetIndex = 1
         end
     end
+    
+    local target = targets[targetIndex]
+    if not target or not target.Character then return end
+    
+    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    
+    -- МГНОВЕННЫЙ ТЕЛЕПОРТ (без task.wait вообще)
+    pcall(function()
+        myHRP.CFrame = targetHRP.CFrame
+    end)
+    
+    -- МГНОВЕННЫЙ ФЛИНГ
+    pcall(function()
+        myHRP.Velocity = myHRP.Velocity * 55000 + Vector3.new(0, 55000, 0)
+    end)
+    
+    -- ЗАХВАТ ЦЕЛИ
+    pcall(function()
+        targetHRP:SetNetworkOwner(nil)
+        targetHRP.Anchored = false
+        targetHRP.Velocity = Vector3.new(
+            math.random(-99999, 99999),
+            math.random(99999, 999999),
+            math.random(-99999, 99999)
+        )
+    end)
+    
+    StatusText.Text = "💀 " .. target.Name .. " (" .. targetIndex .. "/" .. #targets .. ") | " .. string.format("%.1f", 3 - switchTimer) .. "с"
 end
 
--- ЗАПУСК
 local function start()
     if isActive then return end
     isActive = true
-    
     switchTimer = 0
     targetIndex = 1
     
-    flingThread = task.spawn(mainLoop)
+    connection = RunService.RenderStepped:Connect(mainLoop)
     
-    FlingBtn.Text = "FLING + TP ON"
+    FlingBtn.Text = "!FLING + TP ON"
     FlingBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
 end
 
--- СТОП
 local function stop()
     isActive = false
     
-    if flingThread then
-        task.cancel(flingThread)
-        flingThread = nil
+    if connection then
+        connection:Disconnect()
+        connection = nil
     end
     
-    -- Сбрасываем скорость
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.Velocity = Vector3.new(0, 0, 0)
         hrp.RotVelocity = Vector3.new(0, 0, 0)
     end
     
-    FlingBtn.Text = "FLING + TP OFF"
+    FlingBtn.Text = "!FLING + TP OFF"
     FlingBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
     StatusText.Text = "Остановлен"
 end
